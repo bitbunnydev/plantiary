@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../models/weather_data.dart';
 
 class WeatherService {
-  static const String _apiKey = '548abf876c40136fac1a439f0b222ae4';
+  static String get _apiKey => dotenv.env['WEATHER_API_KEY'] ?? '';
   static const String _baseUrl =
       'https://api.openweathermap.org/data/2.5/weather';
   static const String _cacheBoxName = 'weather_cache';

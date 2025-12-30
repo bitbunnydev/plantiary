@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'models/diary_entry.dart';
 import 'models/weather_data.dart';
 import 'services/diary_service.dart';
@@ -10,6 +11,9 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  await dotenv.load(fileName: ".env");
+  
   await Hive.initFlutter();
 
   Hive.registerAdapter(DiaryEntryAdapter());
