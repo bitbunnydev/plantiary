@@ -1,0 +1,18 @@
+Banana_Cordana
+Banana_Panama Disease
+Banana_Yellow and Black Sigatoka
+Banana__Healthy
+Corn_Cercopora_leaf_spot Gray_leaf_spot
+Corn_Common_rust_
+Corn_Northern_Leaf_Blight
+Corn_healthy
+Negative
+Paddy_Bacterial_Leaf_Blight
+Paddy_Brown_Spot
+Paddy_Healthy_Leaf_Rice
+Paddy_Leaf_cald
+Paddy_Leaf_Blast
+Pepper_bell___Bacterial_spot
+Pepper_bell___healthy
+Strawberry___Leaf_scorch
+Strawberry___healthy
