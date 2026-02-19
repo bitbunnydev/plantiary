@@ -19,16 +19,12 @@ class WeatherData {
   @HiveField(4)
   final DateTime timestamp;
 
-  @HiveField(5)
-  final bool isManual;
-
   WeatherData({
     required this.temperature,
     required this.humidity,
     required this.rainfall,
     required this.description,
     required this.timestamp,
-    this.isManual = false,
   });
 
   factory WeatherData.fromJson(Map<String, dynamic> json) {
@@ -38,22 +34,6 @@ class WeatherData {
       rainfall: (json['rain']?['1h'] ?? 0.0).toDouble(),
       description: json['weather']?[0]?['description'] ?? 'Unknown',
       timestamp: DateTime.now(),
-      isManual: false,
-    );
-  }
-
-  factory WeatherData.manual({
-    required double temperature,
-    required double humidity,
-    required double rainfall,
-  }) {
-    return WeatherData(
-      temperature: temperature,
-      humidity: humidity,
-      rainfall: rainfall,
-      description: 'Manually entered',
-      timestamp: DateTime.now(),
-      isManual: true,
     );
   }
 
@@ -64,7 +44,6 @@ class WeatherData {
       'rainfall': rainfall,
       'description': description,
       'timestamp': timestamp.toIso8601String(),
-      'isManual': isManual,
     };
   }
 }

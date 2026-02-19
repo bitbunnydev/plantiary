@@ -14,14 +14,18 @@ class _WeatherScreenState extends State<WeatherScreen> {
   WeatherData? _weatherData;
   bool _isLoading = false;
   bool _isOnline = false;
-  String _riskLevel = 'Unknown';
+  String _riskLevel = 'Low';
   String _advice = '';
 
-  final TextEditingController _temperatureController = TextEditingController();
-  final TextEditingController _humidityController = TextEditingController();
-  final TextEditingController _rainfallController = TextEditingController();
-  final TextEditingController _cropTypeController = TextEditingController(text: 'General');
-  final TextEditingController _growthStageController = TextEditingController(text: 'Growing');
+  // State for selectors
+  String _selectedCrop = 'Paddy';
+  final List<String> _crops = [
+    'Banana',
+    'Corn',
+    'Paddy',
+    'Pepper',
+    'Strawberry',
+  ];
 
   @override
   void initState() {
@@ -29,21 +33,20 @@ class _WeatherScreenState extends State<WeatherScreen> {
     _loadWeather();
   }
 
-  @override
-  void dispose() {
-    _temperatureController.dispose();
-    _humidityController.dispose();
-    _rainfallController.dispose();
-    _cropTypeController.dispose();
-    _growthStageController.dispose();
-    super.dispose();
-  }
-
   Future<void> _loadWeather() async {
     setState(() => _isLoading = true);
-
     _isOnline = await WeatherService.isOnline();
-    final weather = await WeatherService.getWeather(cityName: 'London');
+    final position = await WeatherService.getCurrentLocation();
+
+    WeatherData? weather;
+    if (position != null) {
+      weather = await WeatherService.getWeather(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+    } else {
+      weather = await WeatherService.getWeather(cityName: 'Kuala Lumpur');
+    }
 
     if (weather != null) {
       setState(() {
@@ -51,55 +54,23 @@ class _WeatherScreenState extends State<WeatherScreen> {
         _calculateRisk();
       });
     }
-
     setState(() => _isLoading = false);
   }
 
   void _calculateRisk() {
     if (_weatherData == null) return;
-
-    _riskLevel = WeatherService.getRiskLevel(
-      weather: _weatherData!,
-      cropType: _cropTypeController.text,
-      growthStage: _growthStageController.text,
-    );
-
-    _advice = WeatherService.getFarmingAdvice(
-      weather: _weatherData!,
-      riskLevel: _riskLevel,
-    );
-  }
-
-  Future<void> _saveManualWeather() async {
-    final temp = double.tryParse(_temperatureController.text);
-    final humidity = double.tryParse(_humidityController.text);
-    final rainfall = double.tryParse(_rainfallController.text);
-
-    if (temp == null || humidity == null || rainfall == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter valid numbers')),
-      );
-      return;
-    }
-
-    final manualWeather = WeatherData.manual(
-      temperature: temp,
-      humidity: humidity,
-      rainfall: rainfall,
-    );
-
-    await WeatherService.saveManualWeather(manualWeather);
-
     setState(() {
-      _weatherData = manualWeather;
-      _calculateRisk();
-    });
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Manual weather data saved')),
+      _riskLevel = WeatherService.getRiskLevel(
+        weather: _weatherData!,
+        cropType: _selectedCrop,
+        growthStage: 'Growing',
       );
-    }
+      _advice = WeatherService.getFarmingAdvice(
+        weather: _weatherData!,
+        riskLevel: _riskLevel,
+        cropType: _selectedCrop,
+      );
+    });
   }
 
   @override
@@ -109,16 +80,13 @@ class _WeatherScreenState extends State<WeatherScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF8FAF9),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
-        ),
+        centerTitle: true,
         title: Text(
-          'Weather & Risk Assessment',
+          'Weather & Risk',
           style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
             color: Colors.black87,
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
           ),
         ),
         actions: [
@@ -132,27 +100,72 @@ class _WeatherScreenState extends State<WeatherScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  const SizedBox(height: 16),
-                  if (_weatherData != null) ...[
-                    _buildWeatherCard(),
-                    const SizedBox(height: 16),
-                    _buildRiskAssessmentCard(),
-                    const SizedBox(height: 16),
-                    _buildAdviceCard(),
+          ? const Center(child: CircularProgressIndicator(color: Colors.blue))
+          : RefreshIndicator(
+              onRefresh: _loadWeather,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        "Select Crop",
+                        style: GoogleFonts.poppins(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildCropSelector(),
+                    const SizedBox(height: 24),
+                    if (_weatherData != null) ...[
+                      _buildWeatherCard(),
+                      const SizedBox(height: 20),
+                      _buildRiskAssessmentCard(),
+                      const SizedBox(height: 20),
+                      _buildAdviceCard(),
+                    ],
                   ],
-                  const SizedBox(height: 16),
-                  _buildManualInputCard(),
-                  const SizedBox(height: 16),
-                  _buildCropInfoCard(),
-                  const SizedBox(height: 32),
-                ],
+                ),
               ),
             ),
+    );
+  }
+
+  Widget _buildCropSelector() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Row(
+        children: _crops.map((crop) {
+          bool isSelected = _selectedCrop == crop;
+          return Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: ChoiceChip(
+              label: Text(crop),
+              selected: isSelected,
+              selectedColor: Colors.blue.shade100,
+              labelStyle: GoogleFonts.poppins(
+                color: isSelected ? Colors.blue.shade800 : Colors.black87,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+              onSelected: (val) {
+                if (val) {
+                  setState(() {
+                    _selectedCrop = crop;
+                    _calculateRisk();
+                  });
+                }
+              },
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -170,50 +183,21 @@ class _WeatherScreenState extends State<WeatherScreen> {
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.blue.shade300.withOpacity(0.5),
-              blurRadius: 20,
-              offset: const Offset(0, 10),
+              color: Colors.blue.shade200.withOpacity(0.5),
+              blurRadius: 15,
+              offset: const Offset(0, 8),
             ),
           ],
         ),
         child: Column(
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Current Weather',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _weatherData!.isManual ? 'Manual' : 'Live',
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _weatherMetric(
                   Icons.thermostat,
                   '${_weatherData!.temperature.toStringAsFixed(1)}°C',
-                  'Temperature',
+                  'Temp',
                 ),
                 _weatherMetric(
                   Icons.water_drop,
@@ -221,27 +205,28 @@ class _WeatherScreenState extends State<WeatherScreen> {
                   'Humidity',
                 ),
                 _weatherMetric(
-                  Icons.grain,
+                  Icons.umbrella,
                   '${_weatherData!.rainfall.toStringAsFixed(1)}mm',
-                  'Rainfall',
+                  'Rain',
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(
-              _weatherData!.description,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                color: Colors.white.withOpacity(0.9),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Updated: ${_formatTime(_weatherData!.timestamp)}',
-              style: GoogleFonts.poppins(
-                fontSize: 12,
-                color: Colors.white.withOpacity(0.7),
-              ),
+            const SizedBox(height: 20),
+            Divider(color: Colors.white.withOpacity(0.3)),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.history, color: Colors.white70, size: 14),
+                const SizedBox(width: 6),
+                Text(
+                  'Updated: ${_formatTime(_weatherData!.timestamp)}',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -252,94 +237,64 @@ class _WeatherScreenState extends State<WeatherScreen> {
   Widget _weatherMetric(IconData icon, String value, String label) {
     return Column(
       children: [
-        Icon(icon, color: Colors.white, size: 32),
-        const SizedBox(height: 8),
+        Icon(icon, color: Colors.white, size: 28),
+        const SizedBox(height: 4),
         Text(
           value,
           style: GoogleFonts.poppins(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
             color: Colors.white,
           ),
         ),
         Text(
           label,
-          style: GoogleFonts.poppins(
-            fontSize: 12,
-            color: Colors.white.withOpacity(0.8),
-          ),
+          style: GoogleFonts.poppins(fontSize: 11, color: Colors.white70),
         ),
       ],
     );
   }
 
   Widget _buildRiskAssessmentCard() {
-    Color riskColor;
-    IconData riskIcon;
-
-    switch (_riskLevel) {
-      case 'High':
-        riskColor = Colors.red;
-        riskIcon = Icons.warning_rounded;
-        break;
-      case 'Medium':
-        riskColor = Colors.orange;
-        riskIcon = Icons.info_rounded;
-        break;
-      default:
-        riskColor = Colors.green;
-        riskIcon = Icons.check_circle_rounded;
-    }
-
+    Color riskColor = _riskLevel == 'High'
+        ? Colors.red
+        : (_riskLevel == 'Medium' ? Colors.orange : Colors.green);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: riskColor.withOpacity(0.3), width: 2),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: riskColor.withOpacity(0.3)),
           boxShadow: [
             BoxShadow(
-              color: riskColor.withOpacity(0.2),
-              blurRadius: 20,
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
         ),
-        child: Column(
+        child: Row(
           children: [
-            Row(
+            Icon(Icons.warning_amber_rounded, color: riskColor, size: 30),
+            const SizedBox(width: 15),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: riskColor.withOpacity(0.1),
-                    shape: BoxShape.circle,
+                Text(
+                  'Current Risk Level',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.black54,
                   ),
-                  child: Icon(riskIcon, color: riskColor, size: 32),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Disease Risk Level',
-                        style: GoogleFonts.poppins(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                      Text(
-                        _riskLevel,
-                        style: GoogleFonts.poppins(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: riskColor,
-                        ),
-                      ),
-                    ],
+                Text(
+                  _riskLevel,
+                  style: GoogleFonts.poppins(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: riskColor,
                   ),
                 ),
               ],
@@ -354,14 +309,15 @@ class _WeatherScreenState extends State<WeatherScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
@@ -371,196 +327,28 @@ class _WeatherScreenState extends State<WeatherScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.lightbulb_rounded, color: Colors.amber.shade600, size: 28),
-                const SizedBox(width: 12),
+                Icon(Icons.lightbulb_outline, color: Colors.orange, size: 20),
+                const SizedBox(width: 8),
                 Text(
                   'Farming Advice',
                   style: GoogleFonts.poppins(
-                    fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: Colors.black87,
+                    fontSize: 15,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               _advice,
               style: GoogleFonts.poppins(
                 fontSize: 14,
-                color: Colors.grey.shade700,
+                color: Colors.black87,
                 height: 1.5,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildManualInputCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.edit_rounded, color: Colors.purple.shade600, size: 28),
-                const SizedBox(width: 12),
-                Text(
-                  'Manual Weather Input',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(_temperatureController, 'Temperature (°C)', Icons.thermostat),
-            const SizedBox(height: 12),
-            _buildTextField(_humidityController, 'Humidity (%)', Icons.water_drop),
-            const SizedBox(height: 12),
-            _buildTextField(_rainfallController, 'Rainfall (mm)', Icons.grain),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _saveManualWeather,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Save & Calculate Risk',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCropInfoCard() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.agriculture_rounded, color: Colors.green.shade600, size: 28),
-                const SizedBox(width: 12),
-                Text(
-                  'Crop Information',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(_cropTypeController, 'Crop Type', Icons.eco),
-            const SizedBox(height: 12),
-            _buildTextField(_growthStageController, 'Growth Stage', Icons.trending_up),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _calculateRisk();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Update Risk Assessment',
-                  style: GoogleFonts.poppins(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(
-    TextEditingController controller,
-    String label,
-    IconData icon,
-  ) {
-    return TextField(
-      controller: controller,
-      keyboardType: TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: Colors.grey.shade600),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: Colors.green.shade600, width: 2),
-        ),
-        filled: true,
-        fillColor: Colors.grey.shade50,
       ),
     );
   }

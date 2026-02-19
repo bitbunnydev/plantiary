@@ -11,14 +11,14 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await dotenv.load(fileName: ".env");
-  
+
   await Hive.initFlutter();
 
   Hive.registerAdapter(DiaryEntryAdapter());
   Hive.registerAdapter(WeatherDataAdapter());
-  
+
   await DiaryService.init();
   await WeatherService.init();
 

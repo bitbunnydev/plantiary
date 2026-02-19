@@ -2,17 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:introduction_screen/introduction_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
-import 'home_screen.dart';
+import 'package:lottie/lottie.dart';
+import 'main_navigation_screen.dart';
 
 class IntroScreen extends StatelessWidget {
-  const IntroScreen({super.key});
+  final bool isFirstTime;
+  
+  const IntroScreen({super.key, this.isFirstTime = true});
 
   void _onIntroEnd(BuildContext context) {
-    Hive.box('settings').put('seenIntro', true);
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomeScreen()),
-    );
+    if (isFirstTime) {
+      Hive.box('settings').put('seenIntro', true);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNavigationScreen()),
+      );
+    } else {
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -21,24 +28,14 @@ class IntroScreen extends StatelessWidget {
       pages: [
         PageViewModel(
           title: "Welcome to Plantiary",
-          body: "Your AI-powered companion for healthier crops and smarter farming.",
+          body:
+              "Your AI-powered companion for healthier crops and smarter farming.",
           image: Center(
-            child: Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.green.shade400, Colors.green.shade600],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.green.withOpacity(0.3),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Image.asset('assets/onboard1.png', height: 160),
+            child: Lottie.asset(
+              'assets/lottie/Welcome.json',
+              width: 300,
+              height: 300,
+              fit: BoxFit.contain,
             ),
           ),
           decoration: PageDecoration(
@@ -58,24 +55,14 @@ class IntroScreen extends StatelessWidget {
         ),
         PageViewModel(
           title: "Smart Diagnosis",
-          body: "Scan your plant leaves and get instant disease detection powered by AI technology.",
+          body:
+              "Scan your plant leaves and get instant disease detection powered by AI technology.",
           image: Center(
-            child: Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.blue.shade400, Colors.blue.shade600],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.blue.withOpacity(0.3),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Image.asset('assets/onboard2.png', height: 160),
+            child: Lottie.asset(
+              'assets/lottie/disgnose.json',
+              width: 300,
+              height: 300,
+              fit: BoxFit.contain,
             ),
           ),
           decoration: PageDecoration(
@@ -95,24 +82,14 @@ class IntroScreen extends StatelessWidget {
         ),
         PageViewModel(
           title: "Track & Monitor",
-          body: "Keep a digital diary of your plants and track their health progress over time.",
+          body:
+              "Keep a digital diary of your plants and track their health progress over time.",
           image: Center(
-            child: Container(
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  colors: [Colors.purple.shade400, Colors.purple.shade600],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.purple.withOpacity(0.3),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Image.asset('assets/onboard3.png', height: 160),
+            child: Lottie.asset(
+              'assets/lottie/monitoring.json',
+              width: 300,
+              height: 300,
+              fit: BoxFit.contain,
             ),
           ),
           decoration: PageDecoration(
@@ -168,7 +145,7 @@ class IntroScreen extends StatelessWidget {
           ],
         ),
         child: Text(
-          "Get Started",
+          "Lets Go!",
           style: GoogleFonts.poppins(
             fontWeight: FontWeight.w700,
             fontSize: 16,

@@ -6,8 +6,9 @@ import '../models/disease.dart';
 
 class PlantListScreen extends StatefulWidget {
   final String? targetPlant;
-  
-  const PlantListScreen({super.key, this.targetPlant});
+  final bool showBottomNav;
+
+  const PlantListScreen({super.key, this.targetPlant, this.showBottomNav = true});
 
   @override
   State<PlantListScreen> createState() => _PlantListScreenState();
@@ -30,7 +31,8 @@ class _PlantListScreenState extends State<PlantListScreen> {
     if (widget.targetPlant == null) return;
 
     final targetIndex = plantList.indexWhere(
-      (plant) => plant.name.toLowerCase().contains(widget.targetPlant!.toLowerCase()),
+      (plant) =>
+          plant.name.toLowerCase().contains(widget.targetPlant!.toLowerCase()),
     );
 
     if (targetIndex != -1) {
@@ -73,8 +75,11 @@ class _PlantListScreenState extends State<PlantListScreen> {
         itemCount: plantList.length,
         itemBuilder: (context, index) {
           Plant plant = plantList[index];
-          final isTarget = widget.targetPlant != null &&
-              plant.name.toLowerCase().contains(widget.targetPlant!.toLowerCase());
+          final isTarget =
+              widget.targetPlant != null &&
+              plant.name.toLowerCase().contains(
+                widget.targetPlant!.toLowerCase(),
+              );
 
           return TweenAnimationBuilder(
             tween: Tween<double>(begin: 0, end: 1),
@@ -136,7 +141,10 @@ class _PlantListScreenState extends State<PlantListScreen> {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(20),
-                              child: Image.asset(plant.image, fit: BoxFit.cover),
+                              child: Image.asset(
+                                plant.image,
+                                fit: BoxFit.cover,
+                              ),
                             ),
                           ),
                         ),
@@ -150,7 +158,9 @@ class _PlantListScreenState extends State<PlantListScreen> {
                                 style: GoogleFonts.poppins(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w800,
-                                  color: isTarget ? Colors.purple.shade900 : Colors.black87,
+                                  color: isTarget
+                                      ? Colors.purple.shade900
+                                      : Colors.black87,
                                 ),
                               ),
                               const SizedBox(height: 10),
@@ -162,13 +172,23 @@ class _PlantListScreenState extends State<PlantListScreen> {
                                 decoration: BoxDecoration(
                                   gradient: LinearGradient(
                                     colors: isTarget
-                                        ? [Colors.purple.shade600, Colors.purple.shade400]
-                                        : [Colors.green.shade600, Colors.green.shade400],
+                                        ? [
+                                            Colors.purple.shade600,
+                                            Colors.purple.shade400,
+                                          ]
+                                        : [
+                                            Colors.green.shade600,
+                                            Colors.green.shade400,
+                                          ],
                                   ),
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: (isTarget ? Colors.purple : Colors.green).withOpacity(0.3),
+                                      color:
+                                          (isTarget
+                                                  ? Colors.purple
+                                                  : Colors.green)
+                                              .withOpacity(0.3),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -177,7 +197,11 @@ class _PlantListScreenState extends State<PlantListScreen> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.coronavirus_outlined, color: Colors.white, size: 16),
+                                    const Icon(
+                                      Icons.coronavirus_outlined,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
                                     const SizedBox(width: 6),
                                     Text(
                                       '${plant.diseases.length} disease${plant.diseases.length != 1 ? 's' : ''}',
@@ -223,11 +247,18 @@ class _PlantListScreenState extends State<PlantListScreen> {
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Colors.green.shade600, Colors.green.shade400],
+                              colors: [
+                                Colors.green.shade600,
+                                Colors.green.shade400,
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: const Icon(Icons.coronavirus_outlined, color: Colors.white, size: 20),
+                          child: const Icon(
+                            Icons.coronavirus_outlined,
+                            color: Colors.white,
+                            size: 20,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Text(
@@ -260,7 +291,10 @@ class _PlantListScreenState extends State<PlantListScreen> {
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: disease.isHealthy
-                                    ? [Colors.green.shade50, Colors.green.shade100]
+                                    ? [
+                                        Colors.green.shade50,
+                                        Colors.green.shade100,
+                                      ]
                                     : [Colors.red.shade50, Colors.red.shade100],
                               ),
                               borderRadius: BorderRadius.circular(18),
@@ -272,7 +306,11 @@ class _PlantListScreenState extends State<PlantListScreen> {
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: (disease.isHealthy ? Colors.green : Colors.red).withOpacity(0.2),
+                                  color:
+                                      (disease.isHealthy
+                                              ? Colors.green
+                                              : Colors.red)
+                                          .withOpacity(0.2),
                                   blurRadius: 12,
                                   offset: const Offset(0, 6),
                                 ),
@@ -288,8 +326,14 @@ class _PlantListScreenState extends State<PlantListScreen> {
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
                                           colors: disease.isHealthy
-                                              ? [Colors.green.shade700, Colors.green.shade500]
-                                              : [Colors.red.shade700, Colors.red.shade500],
+                                              ? [
+                                                  Colors.green.shade700,
+                                                  Colors.green.shade500,
+                                                ]
+                                              : [
+                                                  Colors.red.shade700,
+                                                  Colors.red.shade500,
+                                                ],
                                         ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),

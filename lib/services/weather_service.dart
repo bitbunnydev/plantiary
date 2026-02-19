@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:hive/hive.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:geolocator/geolocator.dart';
 import '../models/weather_data.dart';
 
 class WeatherService {
@@ -11,48 +12,61 @@ class WeatherService {
       'https://api.openweathermap.org/data/2.5/weather';
   static const String _cacheBoxName = 'weather_cache';
 
+  // ================= INIT =================
   static Future<void> init() async {
     if (!Hive.isBoxOpen(_cacheBoxName)) {
       await Hive.openBox<WeatherData>(_cacheBoxName);
     }
   }
 
+  // ================= CONNECTIVITY =================
   static Future<bool> isOnline() async {
     final connectivityResult = await Connectivity().checkConnectivity();
-    return connectivityResult.first != ConnectivityResult.none;
+    return connectivityResult != ConnectivityResult.none;
   }
 
+  // ================= LOCATION =================
+  static Future<Position?> getCurrentLocation() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) return null;
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) return null;
+      }
+
+      if (permission == LocationPermission.deniedForever) return null;
+
+      return await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.medium,
+          distanceFilter: 100,
+        ),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ================= WEATHER =================
   static Future<WeatherData?> getWeather({
     double? latitude,
     double? longitude,
     String? cityName,
   }) async {
     try {
-      final online = await isOnline();
-
-      if (online) {
-        final weatherData = await _fetchWeatherFromApi(
+      if (await isOnline()) {
+        final weather = await _fetchWeatherFromApi(
           latitude: latitude,
           longitude: longitude,
           cityName: cityName,
         );
-        if (weatherData != null) {
-          return weatherData;
-        }
+        if (weather != null) return weather;
       }
-      
-      final cached = _getCachedWeather();
-      if (cached != null) {
-        return cached;
-      }
-      
-      return _getDemoWeather();
-    } catch (e) {
-      final cached = _getCachedWeather();
-      if (cached != null) {
-        return cached;
-      }
-      return _getDemoWeather();
+      return _getCachedWeather() ?? _getDemoWeather();
+    } catch (_) {
+      return _getCachedWeather() ?? _getDemoWeather();
     }
   }
 
@@ -64,9 +78,10 @@ class WeatherService {
     try {
       String url;
       if (latitude != null && longitude != null) {
-        url = '$_baseUrl?lat=$latitude&lon=$longitude&appid=$_apiKey';
+        url =
+            '$_baseUrl?lat=$latitude&lon=$longitude&appid=$_apiKey&units=metric';
       } else if (cityName != null) {
-        url = '$_baseUrl?q=$cityName&appid=$_apiKey';
+        url = '$_baseUrl?q=$cityName&appid=$_apiKey&units=metric';
       } else {
         return null;
       }
@@ -77,18 +92,32 @@ class WeatherService {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final weatherData = WeatherData.fromJson(data);
+
+        final double rainfall =
+            data['rain'] != null && data['rain']['1h'] != null
+            ? (data['rain']['1h'] as num).toDouble()
+            : 0.0;
+
+        final weatherData = WeatherData(
+          temperature: (data['main']['temp'] as num).toDouble(),
+          humidity: (data['main']['humidity'] as num).toDouble(),
+          rainfall: rainfall,
+          description: data['weather'][0]['description'],
+          timestamp: DateTime.now(),
+        );
+
         await _cacheWeather(weatherData);
         return weatherData;
       }
       return null;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
 
+  // ================= CACHE =================
   static Future<void> _cacheWeather(WeatherData data) async {
-    final box = await Hive.openBox<WeatherData>(_cacheBoxName);
+    final box = Hive.box<WeatherData>(_cacheBoxName);
     await box.put('latest', data);
   }
 
@@ -97,91 +126,119 @@ class WeatherService {
     return box.get('latest');
   }
 
-  static Future<void> saveManualWeather(WeatherData data) async {
-    await _cacheWeather(data);
-  }
-
   static WeatherData _getDemoWeather() {
     return WeatherData(
-      temperature: 26.5,
-      humidity: 65.0,
-      rainfall: 2.5,
-      description: 'Demo weather data - Partly cloudy',
+      temperature: 26.0,
+      humidity: 70.0,
+      rainfall: 1.0,
+      description: 'Demo weather data',
       timestamp: DateTime.now(),
-      isManual: false,
     );
   }
 
+  // ================= RISK LEVEL (ALL CROPS) =================
   static String getRiskLevel({
     required WeatherData weather,
     required String cropType,
     required String growthStage,
   }) {
-    int riskScore = 0;
+    double riskScore = 0;
+    final crop = cropType.toLowerCase();
+    final stage = growthStage.toLowerCase();
 
-    if (weather.humidity > 80) {
-      riskScore += 3;
-    } else if (weather.humidity > 60) {
+    // ---------- HUMIDITY ----------
+    if (weather.humidity >= 85) {
+      if (crop == 'strawberry' || crop == 'pepper') {
+        riskScore += 4;
+      } else if (crop == 'paddy' || crop == 'banana') {
+        riskScore += 3.5;
+      } else if (crop == 'corn') {
+        riskScore += 2.5;
+      }
+    } else if (weather.humidity >= 70) {
       riskScore += 2;
-    } else if (weather.humidity > 40) {
-      riskScore += 1;
     }
 
-    if (weather.temperature > 30) {
-      riskScore += 2;
-    } else if (weather.temperature > 25) {
-      riskScore += 1;
-    } else if (weather.temperature < 10) {
-      riskScore += 2;
+    // ---------- TEMPERATURE ----------
+    if (crop == 'paddy') {
+      if (weather.temperature < 18 || weather.temperature > 35) riskScore += 2;
+    }
+    if (crop == 'banana') {
+      if (weather.temperature < 15 || weather.temperature > 38) riskScore += 3;
+    }
+    if (crop == 'corn') {
+      // NEW: Corn optimal range 20–30°C → no added risk
+      if (weather.temperature < 20 || weather.temperature > 30)
+        riskScore += 1.5;
+    }
+    if (crop == 'pepper') {
+      if (weather.temperature > 32)
+        riskScore += 3;
+      else if (weather.temperature < 15)
+        riskScore += 2;
+    }
+    if (crop == 'strawberry') {
+      if (weather.temperature > 30 || weather.temperature < 10) riskScore += 3;
     }
 
-    if (weather.rainfall > 10) {
-      riskScore += 3;
+    // ---------- RAINFALL ----------
+    if (weather.rainfall > 15) {
+      if (crop == 'strawberry' || crop == 'pepper')
+        riskScore += 4;
+      else
+        riskScore += 2.5;
     } else if (weather.rainfall > 5) {
-      riskScore += 2;
-    } else if (weather.rainfall > 2) {
-      riskScore += 1;
+      riskScore += 1.5;
     }
 
-    if (growthStage.toLowerCase().contains('flowering') ||
-        growthStage.toLowerCase().contains('fruiting')) {
-      riskScore += 1;
-    }
+    if (crop == 'paddy' && weather.rainfall < 1) riskScore += 0.5;
+    if (crop == 'corn' && weather.rainfall < 1)
+      riskScore += 1; // less severe now
 
-    if (riskScore >= 7) {
-      return 'High';
-    } else if (riskScore >= 4) {
-      return 'Medium';
-    } else {
-      return 'Low';
-    }
+    // ---------- GROWTH STAGE ----------
+    if (stage.contains('flowering') || stage.contains('fruiting'))
+      riskScore += 1.5;
+    else if (stage.contains('seedling'))
+      riskScore += 1;
+
+    // ---------- FINAL LEVEL ----------
+    if (riskScore >= 8) return 'High';
+    if (riskScore >= 4) return 'Medium';
+    return 'Low';
   }
 
+  // ================= FARMING ADVICE =================
   static String getFarmingAdvice({
     required WeatherData weather,
     required String riskLevel,
+    required String cropType,
   }) {
+    final crop = cropType.toLowerCase();
+
     if (riskLevel == 'High') {
       if (weather.humidity > 80) {
-        return 'High humidity detected. Avoid spraying fungicides. Risk of fungal diseases is very high. Ensure good air circulation.';
-      } else if (weather.rainfall > 10) {
-        return 'Heavy rainfall expected. Postpone any spraying activities. Check for waterlogging and drainage issues.';
-      } else if (weather.temperature > 30) {
-        return 'High temperature alert. Ensure adequate irrigation. Avoid midday spraying to prevent leaf burn.';
+        if (crop == 'strawberry') {
+          return 'Very high risk of gray mold. Improve ventilation and avoid overhead watering.';
+        }
+        if (crop == 'pepper') {
+          return 'High humidity may cause fungal leaf and fruit diseases. Monitor closely.';
+        }
+        if (crop == 'paddy') {
+          return 'High humidity increases risk of rice blast and sheath blight.';
+        }
       }
-      return 'High disease risk. Monitor crops closely and take preventive measures.';
-    } else if (riskLevel == 'Medium') {
-      if (weather.humidity > 60) {
-        return 'Moderate humidity levels. Good time for preventive spraying if no rain is expected in next 24 hours.';
-      } else if (weather.rainfall > 5) {
-        return 'Moderate rainfall expected. Plan spraying activities carefully. Wait for dry conditions.';
+
+      if (weather.rainfall > 15) {
+        return 'Heavy rainfall detected. Improve drainage and delay spraying for $cropType.';
       }
-      return 'Moderate risk. Regular monitoring recommended. Consider preventive measures.';
-    } else {
-      if (weather.humidity < 40 && weather.rainfall < 2) {
-        return 'Favorable conditions for spraying. Low disease risk. Good time for field operations.';
-      }
-      return 'Low disease risk. Continue regular monitoring and maintenance.';
+
+      return 'High-risk conditions detected. Close monitoring of $cropType is required.';
     }
+
+    if (riskLevel == 'Medium') {
+      return 'Moderate risk detected. Regular inspection of $cropType is recommended.';
+    }
+
+    return 'Weather conditions are favorable for $cropType. Disease risk is low.';
   }
 }

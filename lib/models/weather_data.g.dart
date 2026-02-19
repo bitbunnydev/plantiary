@@ -22,14 +22,13 @@ class WeatherDataAdapter extends TypeAdapter<WeatherData> {
       rainfall: fields[2] as double,
       description: fields[3] as String,
       timestamp: fields[4] as DateTime,
-      isManual: fields[5] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, WeatherData obj) {
     writer
-      ..writeByte(6)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.temperature)
       ..writeByte(1)
@@ -39,9 +38,7 @@ class WeatherDataAdapter extends TypeAdapter<WeatherData> {
       ..writeByte(3)
       ..write(obj.description)
       ..writeByte(4)
-      ..write(obj.timestamp)
-      ..writeByte(5)
-      ..write(obj.isManual);
+      ..write(obj.timestamp);
   }
 
   @override

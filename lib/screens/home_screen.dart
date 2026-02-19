@@ -3,9 +3,17 @@ import 'package:google_fonts/google_fonts.dart';
 import 'process_screen.dart';
 import 'plant_list_screen.dart';
 import 'weather_screen.dart';
+import 'intro_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool showBottomNav;
+  final Function(int)? onNavigateToTab;
+
+  const HomeScreen({
+    super.key,
+    this.showBottomNav = true,
+    this.onNavigateToTab,
+  });
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -48,16 +56,20 @@ class _HomeScreenState extends State<HomeScreen>
       _currentIndex = index;
     });
 
-    if (index == 1) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const ProcessScreen()),
-      );
-    } else if (index == 2) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const PlantListScreen()),
-      );
+    if (widget.onNavigateToTab != null) {
+      widget.onNavigateToTab!(index);
+    } else {
+      if (index == 1) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ProcessScreen()),
+        );
+      } else if (index == 2) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const PlantListScreen()),
+        );
+      }
     }
   }
 
@@ -87,7 +99,9 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
-      bottomNavigationBar: _modernFloatingNavBar(),
+      bottomNavigationBar: widget.showBottomNav
+          ? _modernFloatingNavBar()
+          : null,
     );
   }
 
@@ -108,11 +122,7 @@ class _HomeScreenState extends State<HomeScreen>
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
-              Icons.eco,
-              color: Colors.white,
-              size: 24,
-            ),
+            child: const Icon(Icons.eco, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 12),
           Text(
@@ -127,6 +137,33 @@ class _HomeScreenState extends State<HomeScreen>
         ],
       ),
       actions: [
+        Container(
+          margin: const EdgeInsets.only(right: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const IntroScreen(isFirstTime: false)),
+              );
+            },
+            icon: Icon(
+              Icons.help_outline,
+              color: Colors.grey.shade700,
+              size: 24,
+            ),
+          ),
+        ),
         Container(
           margin: const EdgeInsets.only(right: 16),
           decoration: BoxDecoration(
@@ -232,10 +269,7 @@ class _HomeScreenState extends State<HomeScreen>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
               gradient: LinearGradient(
-                colors: [
-                  Colors.green.shade600,
-                  Colors.green.shade400,
-                ],
+                colors: [Colors.green.shade600, Colors.green.shade400],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -254,11 +288,7 @@ class _HomeScreenState extends State<HomeScreen>
                   bottom: -40,
                   child: Opacity(
                     opacity: 0.15,
-                    child: Icon(
-                      Icons.cloud,
-                      size: 180,
-                      color: Colors.white,
-                    ),
+                    child: Icon(Icons.cloud, size: 180, color: Colors.white),
                   ),
                 ),
                 Positioned(
@@ -287,11 +317,7 @@ class _HomeScreenState extends State<HomeScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.wb_sunny,
-                        color: Colors.white,
-                        size: 48,
-                      ),
+                      const Icon(Icons.wb_sunny, color: Colors.white, size: 48),
                       const SizedBox(height: 12),
                       Text(
                         'Weather Insights',
@@ -303,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen>
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Get real-time weather updates',
+                        'Click to Get real-time weather updates',
                         style: GoogleFonts.poppins(
                           fontSize: 13,
                           color: Colors.white.withOpacity(0.9),
@@ -352,9 +378,21 @@ class _HomeScreenState extends State<HomeScreen>
   // Animated Steps Card
   Widget _animatedStepsCard() {
     final steps = [
-      {'icon': Icons.camera_alt_rounded, 'label': 'Capture', 'color': Colors.blue},
-      {'icon': Icons.psychology_rounded, 'label': 'Diagnose', 'color': Colors.orange},
-      {'icon': Icons.tips_and_updates_rounded, 'label': 'Solutions', 'color': Colors.purple},
+      {
+        'icon': Icons.camera_alt_rounded,
+        'label': 'Capture',
+        'color': Colors.blue,
+      },
+      {
+        'icon': Icons.psychology_rounded,
+        'label': 'Diagnose',
+        'color': Colors.orange,
+      },
+      {
+        'icon': Icons.tips_and_updates_rounded,
+        'label': 'Solutions',
+        'color': Colors.purple,
+      },
     ];
 
     return Padding(
@@ -500,10 +538,14 @@ class _HomeScreenState extends State<HomeScreen>
             height: 60,
             child: ElevatedButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const ProcessScreen()),
-                );
+                if (widget.onNavigateToTab != null) {
+                  widget.onNavigateToTab!(1);
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const ProcessScreen()),
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade600,

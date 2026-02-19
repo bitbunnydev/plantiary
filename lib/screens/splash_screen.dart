@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:hive/hive.dart';
-import 'home_screen.dart';
 import 'intro_screen.dart';
+import 'main_navigation_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback? darkModeCallback;
@@ -12,7 +12,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
   late AnimationController _logoController;
   late AnimationController _textController;
   late Animation<double> _logoScale;
@@ -23,39 +24,41 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    
+
     _logoController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1200),
     );
-    
+
     _textController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
+
     _logoScale = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _logoController, curve: Curves.elasticOut),
     );
-    
-    _logoRotation = Tween<double>(begin: -0.2, end: 0.0).animate(
-      CurvedAnimation(parent: _logoController, curve: Curves.easeOut),
-    );
-    
-    _textFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _textController, curve: Curves.easeIn),
-    );
-    
+
+    _logoRotation = Tween<double>(
+      begin: -0.2,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _logoController, curve: Curves.easeOut));
+
+    _textFade = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeIn));
+
     _textSlide = Tween<Offset>(
       begin: const Offset(0, 0.5),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _textController, curve: Curves.easeOut));
-    
+
     _logoController.forward();
     Future.delayed(const Duration(milliseconds: 400), () {
       _textController.forward();
     });
-    
+
     _navigateNext();
   }
 
@@ -74,7 +77,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => seenIntro ? const HomeScreen() : const IntroScreen(),
+        builder: (_) =>
+            seenIntro ? const MainNavigationScreen() : const IntroScreen(),
       ),
     );
   }
@@ -118,7 +122,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                             ),
                           ],
                         ),
-                        child: Image.asset('assets/images/splash.png', height: 100),
+                        child: Image.asset(
+                          'assets/images/splash.png',
+                          height: 100,
+                        ),
                       ),
                     ),
                   );
@@ -149,7 +156,10 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       ),
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(20),
